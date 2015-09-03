@@ -3,8 +3,6 @@ Mantle is an intermediary deployment stage for Mesosphere's Marathon utility. It
 
 Mantle decrypts the JSON and POSTs it to a single or multiple Marathon's. It then returns only "success" or "failure" to the POSTing client so the client never receives the decrypted data. 
 
-The only difference between the JSON for Mantle and the JSON for Marathon is all Mantle JSON must have a top level "user":"$name" attribute to signify which  user key to use. Mantle will return "Access denied" if the user can not decrypt the specified value. 
-
 ## Available Commands
 
 ```mantle deploy $somejson.json```: Decrypts all `DEC[$string]` statements and POSTs to Marathon(s).
@@ -21,9 +19,7 @@ All configuration is done via `~/.mantle/config.yaml`:
 marathons:
   - http://my.marathon1.com
   - http://my.marathon2.com
-users:
-  mary:/path/to/mary.pem
-  john:/path/to/john.pem
+key_directory:/path/to/keys/
 # Git repo with eyaml 
 eyaml_repo: git@github.com:mycompany/encrypted.git
 ```
