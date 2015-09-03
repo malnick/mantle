@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"regexp"
 	//"io"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
@@ -98,6 +99,35 @@ func encodeToYaml(encodeThis string, c Config) {
 	err = json.Unmarshal(jsonFile, &EncodeJson)
 	checkError(err)
 	log.Debug("JSON mapped: ", EncodeJson)
+	envVars := EncodeJson.(map[string]interface{})["env"]
+	log.Debug("ENV: ", envVars)
+	for k, v := range envVars.(map[string]interface{}) {
+		log.Debug(fmt.Sprintf("%s: %s", k, v))
+		match, err := regexp.Compile("^ENC\\[*")
+		checkError(err)
+		if match.MatchString(v.(string)) {
+			log.Debug("Matched ENC: ", v)
+			// Write the k,v to the users encrypted_$user.yaml file
+			// Open eyaml file for user
+			userEymlFile := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User)
+			if _, err := os.Stat(userEymlFile); os.IsNotExist(err) {
+				log.Warn(fmt.Sprintf("%s does not exist, creating.", userEymlFile))
+				os.Create(userEymlFile)
+				checkError(err)
+			}
+			efile, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User))
+			checkError(err)
+			log.Debug("eYaml File: ", fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User))
+			log.Debug(efile)
+			// Get users' private key and decode
+			pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
+			checkError(err)
+			log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
+			log.Debug(pemData)
+
+		}
+
+	}
 
 }
 
