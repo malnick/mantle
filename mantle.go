@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v2"
 	//"io"
+	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
@@ -19,15 +20,21 @@ import (
 // CLI Falgs
 var configPath = flag.String("c", "./config.yaml", "Path to config.yaml.")
 var verbose = flag.Bool("v", false, "Log verbosity.")
-var encrypt = flag.String("encrypt", "", "Encrypt JSON. Accepts /path/to/json.json.")
+var encode = flag.String("encode", "", "Encrypt JSON. Accepts /path/to/json.json.")
+var decode = flag.String("decode", "", "Decode JSON. Accepts /path/to/json.json.")
+var deploy = flag.String("deploy", "", "Deploy JSON to Marathon. Accepts /path/to/json.json.")
 var gen = flag.Bool("generate", false, "Generate PKCS keys. Deposits keys in ~/.mantle/keys.")
 
 // Config from YAML
 type Config struct {
-	Marathons    []string `yaml:"marathons"`
-	KeyDirectory string   `yaml:"key_directory"`
-	EyamlRepo    string   `yaml:"eyaml_repo"`
+	Marathons      []string `yaml:"marathons"`
+	KeyDirectory   string   `yaml:"key_directory"`
+	EyamlRepo      string   `yaml:"eyaml_repo"`
+	EyamlDirectory string   `yaml:"eyaml_dir"`
+	User           string   `yaml:"user"`
 }
+
+var EncodeJson interface{}
 
 func checkError(err error) {
 	if err != nil {
@@ -50,9 +57,11 @@ func setConfig(cp string) (o Config, err error) {
 	return o, nil
 }
 
-func generateKeys(keyPath string) {
-	privPath := fmt.Sprintf("%s/privatekey.pem", keyPath)
-	pubPath := fmt.Sprintf("%s/publickey.pem", keyPath)
+func generateKeys(c Config) {
+	keyPath := c.KeyDirectory
+	user := c.User
+	privPath := fmt.Sprintf("%s/privatekey_%s.pem", keyPath, user)
+	pubPath := fmt.Sprintf("%s/publickey_%s.pem", keyPath, user)
 	// generate private key
 	privatekey, err := rsa.GenerateKey(rand.Reader, 1024)
 	checkError(err)
@@ -75,6 +84,22 @@ func generateKeys(keyPath string) {
 	log.Info("Public Key: ", pubPath)
 	fmt.Println(string(pubBytes))
 }
+func decodeJson(decodeThis string, c Config) {
+	files, err := ioutil.ReadDir(c.EyamlDirectory)
+	checkError(err)
+	for _, file := range files {
+		log.Debug("eYaml found: ", file)
+	}
+}
+
+func encodeToYaml(encodeThis string, c Config) {
+	jsonFile, err := ioutil.ReadFile(encodeThis)
+	checkError(err)
+	err = json.Unmarshal(jsonFile, &EncodeJson)
+	checkError(err)
+	log.Debug("JSON mapped: ", EncodeJson)
+
+}
 
 func main() {
 	flag.Parse()
@@ -89,9 +114,18 @@ func main() {
 	// Set config
 	config, _ := setConfig(*configPath)
 	log.Debug("Configuration: ", config)
-
+	// If generate is passed do the things and exit
 	if *gen {
 		log.Info("Generating PKCS keys...")
-		generateKeys(config.KeyDirectory)
+		generateKeys(config)
+		os.Exit(0)
+	}
+	if len(*decode) > 0 {
+		log.Info(*decode)
+		os.Exit(0)
+	}
+	if len(*encode) > 0 {
+		log.Info("Encoding ", *encode)
+		encodeToYaml(*encode, config)
 	}
 }
