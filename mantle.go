@@ -52,18 +52,28 @@ func setConfig(cp string) (o Config, err error) {
 
 func generateKeys(keyPath string) {
 	privPath := fmt.Sprintf("%s/privatekey.pem", keyPath)
-	//	pubPath := fmt.Sprintf("%s/publickey.pem", keyPath)
+	pubPath := fmt.Sprintf("%s/publickey.pem", keyPath)
 	// generate private key
 	privatekey, err := rsa.GenerateKey(rand.Reader, 1024)
 	checkError(err)
 	// Write Private Key
-	privKeyOut, err := os.OpenFile(privPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	checkError(err)
-	pem.Encode(privKeyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privatekey)})
-	out, _ := ioutil.ReadFile(privPath)
+	privBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privatekey),
+	})
+	ioutil.WriteFile(privPath, privBytes, 0600)
 	log.Info("Private Key: ", privPath)
-	fmt.Println(string(out))
-	privKeyOut.Close()
+	fmt.Println(string(privBytes))
+	// Write Public Key
+	ansipub, err := x509.MarshalPKIXPublicKey(&privatekey.PublicKey)
+	checkError(err)
+	pubBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: ansipub,
+	})
+	ioutil.WriteFile(pubPath, pubBytes, 0644)
+	log.Info("Public Key: ", pubPath)
+	fmt.Println(string(pubBytes))
 }
 
 func main() {
