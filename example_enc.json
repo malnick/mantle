@@ -1,0 +1,25 @@
+{
+  "container": {
+    "type": "DOCKER",
+    "docker": {
+      "image": "malnick/mesos-master",
+      "network": "BRIDGE",
+      "portMappings": [
+        { "containerPort": 5050, "hostPort": 0, "protocol": "tcp" }
+      ]
+    }
+  },
+  "id": "my-service",
+  "env": {
+    "MY_LICENSE_KEY": "ENC[my_license_key:12345]",
+    "MONGO_PASSWORD": "ENC[mongo_password:$ecretp@$$word]"
+  },
+  "instances": 1,
+  "cpus": 0.5,
+  "mem": 1024,
+  "upgradeStrategy": {
+    "minimumHealthCapacity": 0.8,
+    "maximumOverCapacity": 0.4
+  }
+}
+
