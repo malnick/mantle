@@ -2,6 +2,7 @@ package main
 
 import (
 	//"crypto"
+	"bytes"
 	//"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
@@ -173,9 +174,13 @@ func encodeToYaml(encodeThis string, c Config) {
 	err = ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\n%s\n\n", string(data))), 0644)
 	checkError(err)
 	// Dump the convience JSON to STDOUT
-	json, err := json.Marshal(&safejson)
+	jsonout, err := json.Marshal(&safejson)
 	checkError(err)
-	log.Info(fmt.Sprintf("Safe JSON:\n%s", json))
+	var out bytes.Buffer
+	err = json.Indent(&out, []byte(jsonout), "", "\t")
+
+	checkError(err)
+	log.Info(fmt.Sprintf("Safe JSON:\n%s", string(out.Bytes())))
 }
 
 func deployToMarathon(json2deploy string, c Config) {
