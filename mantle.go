@@ -212,6 +212,9 @@ func deployToMarathon(json2deploy string, c Config) {
 	err = yaml.Unmarshal(eyamlfile, &eyamldata)
 	checkError(err)
 	log.Debug("eyaml:\n", string(eyamlfile))
+	// Make unsafe json object
+	unsafejson := jsondata
+	// Range over json
 	for jsondeckey, jsondecvalue := range env.(map[string]interface{}) {
 		log.Debug("Testing for DEC: ", jsondecvalue, " ", jsondeckey)
 		match, err := regexp.Compile("^DEC\\[*")
@@ -228,10 +231,19 @@ func deployToMarathon(json2deploy string, c Config) {
 					decrypted, err := crypto("decrypt", c, eyamlvalue.(string))
 					checkError(err)
 					log.Info("Decrypted ", eyamlkey, " to ", string(decrypted))
+					unsafejson["env"].(map[string]interface{})[jsondeckey] = string(decrypted)
 				}
 			}
 		}
 	}
+	// Marshal to JSON and print to STDOUT
+	jsonout, err := json.Marshal(&unsafejson)
+	checkError(err)
+	var out bytes.Buffer
+	err = json.Indent(&out, []byte(jsonout), "", "\t")
+	checkError(err)
+	log.Info(fmt.Sprintf("Safe JSON:\n%s", string(out.Bytes())))
+
 }
 
 func crypto(mode string, c Config, data string) ([]byte, error) {
