@@ -5,6 +5,7 @@ import (
 	//"crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
@@ -134,8 +135,26 @@ func encodeToYaml(encodeThis string, c Config) {
 			// Split the json match and encode the value
 			encodevalue := strings.Split(strings.Split(jsonvalue.(string), ":")[1], "]")[0]
 			log.Debug("Encoding value: ", encodevalue)
+			// Extract the PEM-encoded data block
+			block, _ := pem.Decode(pemData)
+			if block == nil {
+				log.Error("bad key data: %s", "not PEM-encoded")
+				os.Exit(1)
+			}
+			if got, want := block.Type, "RSA PRIVATE KEY"; got != want {
+				log.Error("unknown key type %q, want %q", got, want)
+				os.Exit(1)
+			}
+			// Decode the RSA private key
+			priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+			if err != nil {
+				log.Error("bad private key: %s", err)
+				os.Exit(1)
+			}
+			encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(encodevalue), []byte("userEymlFile"))
+			checkError(err)
 
-			Eyaml[jsonkey] = jsonvalue
+			Eyaml[jsonkey] = string(encodedvalue)
 		}
 		// Write final eyaml file
 		data, err := yaml.Marshal(&Eyaml)
