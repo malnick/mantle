@@ -37,9 +37,6 @@ type Config struct {
 	User           string   `yaml:"user"`
 }
 
-var EncodeJson interface{}
-var Eyaml map[string]interface{}
-
 func checkError(err error) {
 	if err != nil {
 		log.Error(err)
@@ -88,6 +85,7 @@ func generateKeys(c Config) {
 	log.Info("Public Key: ", pubPath)
 	fmt.Println(string(pubBytes))
 }
+
 func decodeJson(decodeThis string, c Config) {
 	files, err := ioutil.ReadDir(c.EyamlDirectory)
 	checkError(err)
@@ -97,6 +95,9 @@ func decodeJson(decodeThis string, c Config) {
 }
 
 func encodeToYaml(encodeThis string, c Config) {
+	// For reading in and out json and yaml data
+	var EncodeJson interface{}
+	var Eyaml map[string]interface{}
 	// Read in the json to encode
 	jsonFile, err := ioutil.ReadFile(encodeThis)
 	checkError(err)
@@ -165,15 +166,6 @@ func encodeToYaml(encodeThis string, c Config) {
 			//safejson["env"] = make(map[string]string)
 			safejson["env"].(map[string]interface{})[jsonkey] = fmt.Sprintf("DEC[%s]", encodekey)
 		}
-		// Write final eyaml file
-		//	data, err := yaml.Marshal(&Eyaml)
-		//	checkError(err)
-		//	err = ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\n%s\n\n", string(data))), 0644)
-		//	checkError(err)
-		//	// Dump the convience JSON to STDOUT
-		//	json, err := json.Marshal(&safejson)
-		//	checkError(err)
-		//	log.Info(fmt.Sprintf("Safe JSON:\n%s", json))
 	}
 	// Write final eyaml file
 	data, err := yaml.Marshal(&Eyaml)
@@ -184,7 +176,15 @@ func encodeToYaml(encodeThis string, c Config) {
 	json, err := json.Marshal(&safejson)
 	checkError(err)
 	log.Info(fmt.Sprintf("Safe JSON:\n%s", json))
+}
 
+func deployToMarathon(json2deploy string, c Config) {
+	var jsondata map[string]interface{}
+	jsonfile, err := ioutil.ReadFile(json2deploy)
+	checkError(err)
+	err = json.Unmarshal(jsonfile, &jsondata)
+	checkError(err)
+	log.Debug(fmt.Sprintf("JSON Data:\n%s", jsondata))
 }
 
 func main() {
@@ -213,5 +213,9 @@ func main() {
 	if len(*encode) > 0 {
 		log.Info("Encoding ", *encode)
 		encodeToYaml(*encode, config)
+	}
+	if len(*deploy) > 0 {
+		log.Info("Deploying ", *deploy)
+		deployToMarathon(*deploy, config)
 	}
 }
