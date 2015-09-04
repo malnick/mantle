@@ -1,7 +1,7 @@
 # Mantle
-Mantle is an intermediary deployment stage for Mesosphere's Marathon utility. It accepts the same JSON POSTs that Marathon accepts, but looks for environment variables with values of "ENV[valueLookup]". The "valueLookup" is an arbitrary value that corosponds to a key in encrypted YAML. 
+Mantle is an intermediary deployment stage for Mesosphere's Marathon utility that enables multi-user encrypted JSON.
 
-Mantle decrypts the JSON and POSTs it to a single or multiple Marathon's. It then returns only "success" or "failure" to the POSTing client so the client never receives the decrypted data. 
+Mantle enables operations teams to pass out public keys to developers to encode their cleartext ENV variables that are common in JSON POSTs to Marathon. The operations team can then decode with the associated private key and deploy, all in a single utility. 
 
 ## Available Commands
 
@@ -16,7 +16,9 @@ All configuration is done via `~/.mantle/config.yaml`:
 
 ```yaml
 ---
+# Username associated with eyaml and key
 user: $your_name
+# This config isn't necessary if not a user who is deploying
 marathons:
   - http://my.marathon1.com
   - http://my.marathon2.com
@@ -24,7 +26,11 @@ marathons:
 key_directory: /Users/your_name/.mantle/keys
 # Directory where Mantle will store the eyaml files
 eyaml_dir: /Users/your_name/.mantle/eyaml
+# Directory to store safe JSON 
+safe_dir: /Users/your_name/.mantle/safe
 ```
+
+Mantle will create the directories for you if they do not exist. However, it's recommended to use Git or another SCM utility for your eyaml and safe directories to enable streamlined sharing of new, encoded data.
 
 ## Options
 
@@ -33,6 +39,9 @@ Verbose output.
 
 #### -generate | generate keys
 Generates 1024 bit RSA public & private keys and places them in ```key_directory```
+
+#### -u | user override
+Override the default user in the config.yaml. This enables you to deploy, encode or decode with another users' keys. The key must be present in the key_directory with value of ```$ke_directory/privatekey_$user.pem``` and ```$key_directory/publickey_$user.pem```.
 
 #### -deploy | deploy to Marathon
 Accepts ```/path/to/json.json```. Reads JSON data and looks for ENV parameters for Docker container that has values of ```DEC[some_value]```. For each DEC[] statement, it searchs the $users' encrypted YAML file (```$eyaml_dir/$user.yaml```) for the encrypted value and replaces it with teh decrypted value. It then POSTs the decrypted value to Marathon(s) in config.yaml.
