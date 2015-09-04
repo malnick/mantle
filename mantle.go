@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"regexp"
+	"strings"
 	//"io"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
@@ -124,23 +125,22 @@ func encodeToYaml(encodeThis string, c Config) {
 		checkError(err)
 		if match.MatchString(jsonvalue.(string)) {
 			log.Debug("Matched ENC: ", jsonvalue)
-			// Write the k,v to the users encrypted_$user.yaml file
 			// Open eyaml file for user
 			// Get users' private key and decode
 			pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
 			checkError(err)
 			log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
 			log.Debug(string(pemData))
-			for k, v := range Eyaml {
-				if k == jsonvalue {
-					log.Debug("Found match in YAML.", k, " ", v)
+			// Split the json match and encode the value
+			encodevalue := strings.Split(strings.Split(jsonvalue.(string), ":")[1], "]")[0]
+			log.Debug("Encoding value: ", encodevalue)
 
-				} else {
-					log.Debug("No matches found")
-				}
-			}
-
+			Eyaml[jsonkey] = jsonvalue
 		}
+		// Write final eyaml file
+		data, err := yaml.Marshal(&Eyaml)
+		checkError(err)
+		err = ioutil.WriteFile(userEymlFile, data, 0644)
 
 	}
 
