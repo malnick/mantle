@@ -179,7 +179,7 @@ func encodeToYaml(encodeThis string, c Config) {
 				log.Error("bad private key: %s", err)
 				os.Exit(1)
 			}
-			encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(encodevalue), []byte("userEymlFile"))
+			encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(encodevalue), []byte(string(">")))
 			checkError(err)
 			log.Debug("Not showing string value as contents are binary bytes can screw up terminal output.")
 			log.Debug("Encoded value: ", encodedvalue)
@@ -237,7 +237,48 @@ func deployToMarathon(json2deploy string, c Config) {
 		checkError(err)
 		if match.MatchString(jsondecvalue.(string)) {
 			log.Debug("Matched: ", jsondecvalue)
+			jsondecvalue := strings.Split(strings.Split(jsondecvalue.(string), "[")[1], "]")[0]
+			// Get value from yaml
+			for eyamlkey, eyamlvalue := range eyamldata {
+				log.Debug(fmt.Sprintf("Comparing %s and %s", eyamlkey, jsondecvalue))
+				if eyamlkey == jsondecvalue {
+					log.Debug("Found encrypted value in eyaml: ", eyamlkey)
+					log.Debug("Byte stream of binary value: ", []byte(eyamlvalue.(string)))
+				}
+
+			}
 		}
+	}
+}
+
+func crypt(mode string) {
+	// Read the private key
+	pemData, err := ioutil.ReadFile(*keyFile)
+	if err != nil {
+		log.Fatalf("read key file: %s", err)
+	}
+
+	// Extract the PEM-encoded data block
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		log.Fatalf("bad key data: %s", "not PEM-encoded")
+	}
+	if got, want := block.Type, "RSA PRIVATE KEY"; got != want {
+		log.Fatalf("unknown key type %q, want %q", got, want)
+	}
+
+	// Decode the RSA private key
+	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		log.Fatalf("bad private key: %s", err)
+	}
+	if mode == "decrypt" {
+
+	} else if mode == "encrypt" {
+
+	} else {
+		log.Error("Not a known mode: ", mode)
+		os.Exit(1)
 	}
 }
 
