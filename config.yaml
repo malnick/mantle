@@ -1,8 +1,8 @@
 ---
 user: jeff
-marathons:
-  - http://my.marathon1.com
-  - http://my.marathon2.com
+#marathons:
+#  - http://my.marathon1.com
+#  - http://my.marathon2.com
 key_directory: /Users/malnick/.mantle/keys
-# Git repo with eyaml
 eyaml_dir: /Users/malnick/.mantle/eyaml
+safe_dir: /Users/malnick/.mantle/safe

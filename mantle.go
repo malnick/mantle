@@ -28,13 +28,14 @@ var encode = flag.String("encode", "", "Encrypt JSON. Accepts /path/to/json.json
 var decode = flag.String("decode", "", "Decode JSON. Accepts /path/to/json.json.")
 var deploy = flag.String("deploy", "", "Deploy JSON to Marathon. Accepts /path/to/json.json.")
 var gen = flag.Bool("generate", false, "Generate PKCS keys. Deposits keys in ~/.mantle/keys.")
+var user = flag.String("u", "", "Override user in config.yaml.")
 
 // Config from YAML
 type Config struct {
 	Marathons      []string `yaml:"marathons"`
 	KeyDirectory   string   `yaml:"key_directory"`
-	EyamlRepo      string   `yaml:"eyaml_repo"`
 	EyamlDirectory string   `yaml:"eyaml_dir"`
+	SafeDir        string   `yaml:"safe_dir"`
 	User           string   `yaml:"user"`
 }
 
@@ -55,6 +56,25 @@ func setConfig(cp string) (o Config, err error) {
 	if err != nil {
 		log.Error("Is the ", cp, " proper YAML format?")
 		panic(err)
+	}
+	if len(*user) > 0 {
+		o.User = *user
+	}
+	// Check that directories exist, and if not create them.
+	if _, err := os.Stat(o.KeyDirectory); err != nil {
+		log.Warn(o.KeyDirectory, " does not exist. Creating with mode 0700.")
+		err := os.Mkdir(o.KeyDirectory, 0700)
+		checkError(err)
+	}
+	if _, err := os.Stat(o.EyamlDirectory); err != nil {
+		log.Warn(o.EyamlDirectory, " does not exist. Creating with mode 0644.")
+		err := os.Mkdir(o.EyamlDirectory, 0644)
+		checkError(err)
+	}
+	if _, err := os.Stat(o.SafeDir); err != nil {
+		log.Warn(o.SafeDir, " does not exist. Creating with mode 0644.")
+		err := os.Mkdir(o.SafeDir, 0644)
+		checkError(err)
 	}
 	return o, nil
 }
@@ -107,8 +127,8 @@ func encodeToYaml(encodeThis string, c Config) {
 	log.Debug("JSON mapped: ", EncodeJson)
 	// Get just the env vars for parsing then create a new json map to dump just the keys in for convienience
 	envVars := EncodeJson.(map[string]interface{})["env"]
+	// Create an interface for the safe data
 	safejson := EncodeJson.(map[string]interface{})
-	log.Debug("Safe JSON: ", safejson)
 	log.Debug("ENV: ", envVars)
 	// Open users eyaml file and make one if it doesnt exist
 	userEymlFile := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User)
@@ -124,20 +144,18 @@ func encodeToYaml(encodeThis string, c Config) {
 	// Unmarshal the yaml to something we can use later
 	err = yaml.Unmarshal(efile, &Eyaml)
 	checkError(err)
-	log.Debug("Marshelled YAML:\n", Eyaml)
+
+	// Get users' private key and decode
+	pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
+	checkError(err)
+	log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
+	log.Debug(string(pemData))
 
 	for jsonkey, jsonvalue := range envVars.(map[string]interface{}) {
 		log.Debug(fmt.Sprintf("%s: %s", jsonkey, jsonvalue))
 		match, err := regexp.Compile("^ENC\\[*")
 		checkError(err)
 		if match.MatchString(jsonvalue.(string)) {
-			log.Debug("Matched ENC: ", jsonvalue)
-			// Open eyaml file for user
-			// Get users' private key and decode
-			pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-			checkError(err)
-			log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-			log.Debug(string(pemData))
 			// Split the json match and encode the value
 			encodevalue := strings.Split(strings.Split(jsonvalue.(string), ":")[1], "]")[0]
 			encodekey := strings.Split(strings.Split(jsonvalue.(string), ":")[0], "[")[1]
@@ -160,11 +178,11 @@ func encodeToYaml(encodeThis string, c Config) {
 			}
 			encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(encodevalue), []byte("userEymlFile"))
 			checkError(err)
+			log.Warn("Not showing string value as contents are binary bytes can screw up terminal output.")
+			log.Debug("Encoded value: ", encodedvalue)
 			// Add the encoded value to eyaml
-			Eyaml[jsonkey] = string(encodedvalue)
-			log.Debug(Eyaml)
+			Eyaml[encodekey] = string(encodedvalue)
 			// Update the encoded value in the safejson for convienience
-			//safejson["env"] = make(map[string]string)
 			safejson["env"].(map[string]interface{})[jsonkey] = fmt.Sprintf("DEC[%s]", encodekey)
 		}
 	}
@@ -173,14 +191,20 @@ func encodeToYaml(encodeThis string, c Config) {
 	checkError(err)
 	err = ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\n%s\n\n", string(data))), 0644)
 	checkError(err)
+	// Dump Eyaml to STDOUT
+	log.Info("eyaml saved: ", userEymlFile)
 	// Dump the convience JSON to STDOUT
 	jsonout, err := json.Marshal(&safejson)
 	checkError(err)
 	var out bytes.Buffer
 	err = json.Indent(&out, []byte(jsonout), "", "\t")
-
 	checkError(err)
 	log.Info(fmt.Sprintf("Safe JSON:\n%s", string(out.Bytes())))
+	// And write it to the safe
+	safejsonname := strings.Split(encodeThis, "/")[len(strings.Split(encodeThis, "/"))-1]
+	err = ioutil.WriteFile(fmt.Sprintf("%s/%s", c.SafeDir, safejsonname), out.Bytes(), 0644)
+	checkError(err)
+	log.Info("Saving safe JSON for decode: ", fmt.Sprintf("%s/%s", c.SafeDir, safejsonname))
 }
 
 func deployToMarathon(json2deploy string, c Config) {
