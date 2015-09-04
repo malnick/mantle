@@ -164,28 +164,6 @@ func encodeToYaml(encodeThis string, c Config) {
 			encodekey := strings.Split(strings.Split(jsonvalue.(string), ":")[0], "[")[1]
 			encodedvalue, err := crypto("encrypt", c, encodevalue)
 			checkError(err)
-
-			//			log.Debug("Encoding value: ", encodevalue)
-			//			 Extract the PEM-encoded data block
-			//			block, _ := pem.Decode(pemData)
-			//			if block == nil {
-			//				log.Error("bad key data: %s", "not PEM-encoded")
-			//				os.Exit(1)
-			//			}
-			//			if got, want := block.Type, "RSA PRIVATE KEY"; got != want {
-			//				log.Error("unknown key type %q, want %q", got, want)
-			//				os.Exit(1)
-			//			}
-			//			 Decode the RSA private key
-			//			priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-			//			if err != nil {
-			//				log.Error("bad private key: %s", err)
-			//				os.Exit(1)
-			//			}
-			//			encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(encodevalue), []byte(string(">")))
-			//			checkError(err)
-			//			log.Debug("Not showing string value as contents are binary bytes can screw up terminal output.")
-			//			log.Debug("Encoded value: ", encodedvalue)
 			// Add the encoded value to eyaml
 			Eyaml[encodekey] = string(encodedvalue)
 			// Update the encoded value in the safejson for convienience
@@ -247,8 +225,10 @@ func deployToMarathon(json2deploy string, c Config) {
 				if eyamlkey == jsondecvalue {
 					log.Debug("Found encrypted value in eyaml: ", eyamlkey)
 					log.Debug("Byte stream of binary value: ", []byte(eyamlvalue.(string)))
+					decrypted, err := crypto("decrypt", c, eyamlvalue.(string))
+					checkError(err)
+					log.Info("Decrypted ", eyamlkey, " to ", string(decrypted))
 				}
-
 			}
 		}
 	}
@@ -257,7 +237,6 @@ func deployToMarathon(json2deploy string, c Config) {
 func crypto(mode string, c Config, data string) ([]byte, error) {
 	pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
 	checkError(err)
-	log.Debug("Crypto value: ", data)
 	// Extract the PEM-encoded data block
 	block, _ := pem.Decode(pemData)
 	if block == nil {
@@ -276,8 +255,11 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 	}
 
 	if mode == "decrypt" {
-		log.Warn("not yet")
-		return []byte("nope"), nil
+		log.Debug("Decrypting...")
+		decryptedvalue, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, priv, []byte(data), []byte(">"))
+		checkError(err)
+		return decryptedvalue, nil
+
 	} else if mode == "encrypt" {
 		encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(data), []byte(string(">")))
 		checkError(err)
