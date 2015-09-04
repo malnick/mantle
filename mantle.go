@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
+	"net/http"
 	"os"
 )
 
@@ -254,7 +255,16 @@ func postToMarathon(post []byte, c Config) {
 	}
 	for _, uri := range marathons {
 		log.Info("POSTing to ", uri)
-
+		req, err := http.NewRequest("POST", uri, bytes.NewBuffer(post))
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		checkError(err)
+		defer resp.Body.Close()
+		log.Info("Response Status:", resp.Status)
+		log.Info("response Headers:", resp.Header)
+		body, _ := ioutil.ReadAll(resp.Body)
+		log.Info("Response Body:", string(body))
 	}
 
 }
