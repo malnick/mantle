@@ -97,12 +97,16 @@ func decodeJson(decodeThis string, c Config) {
 }
 
 func encodeToYaml(encodeThis string, c Config) {
+	// Read in the json to encode
 	jsonFile, err := ioutil.ReadFile(encodeThis)
 	checkError(err)
 	err = json.Unmarshal(jsonFile, &EncodeJson)
 	checkError(err)
 	log.Debug("JSON mapped: ", EncodeJson)
+	// Get just the env vars for parsing then create a new json map to dump just the keys in for convienience
 	envVars := EncodeJson.(map[string]interface{})["env"]
+	safejson := EncodeJson.(map[string]interface{})
+	log.Debug("Safe JSON: ", safejson)
 	log.Debug("ENV: ", envVars)
 	// Open users eyaml file and make one if it doesnt exist
 	userEymlFile := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User)
@@ -134,6 +138,7 @@ func encodeToYaml(encodeThis string, c Config) {
 			log.Debug(string(pemData))
 			// Split the json match and encode the value
 			encodevalue := strings.Split(strings.Split(jsonvalue.(string), ":")[1], "]")[0]
+			encodekey := strings.Split(strings.Split(jsonvalue.(string), ":")[0], "[")[1]
 			log.Debug("Encoding value: ", encodevalue)
 			// Extract the PEM-encoded data block
 			block, _ := pem.Decode(pemData)
@@ -153,15 +158,32 @@ func encodeToYaml(encodeThis string, c Config) {
 			}
 			encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(encodevalue), []byte("userEymlFile"))
 			checkError(err)
-
+			// Add the encoded value to eyaml
 			Eyaml[jsonkey] = string(encodedvalue)
+			log.Debug(Eyaml)
+			// Update the encoded value in the safejson for convienience
+			//safejson["env"] = make(map[string]string)
+			safejson["env"].(map[string]interface{})[jsonkey] = fmt.Sprintf("DEC[%s]", encodekey)
 		}
 		// Write final eyaml file
-		data, err := yaml.Marshal(&Eyaml)
-		checkError(err)
-		err = ioutil.WriteFile(userEymlFile, data, 0644)
-
+		//	data, err := yaml.Marshal(&Eyaml)
+		//	checkError(err)
+		//	err = ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\n%s\n\n", string(data))), 0644)
+		//	checkError(err)
+		//	// Dump the convience JSON to STDOUT
+		//	json, err := json.Marshal(&safejson)
+		//	checkError(err)
+		//	log.Info(fmt.Sprintf("Safe JSON:\n%s", json))
 	}
+	// Write final eyaml file
+	data, err := yaml.Marshal(&Eyaml)
+	checkError(err)
+	err = ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\n%s\n\n", string(data))), 0644)
+	checkError(err)
+	// Dump the convience JSON to STDOUT
+	json, err := json.Marshal(&safejson)
+	checkError(err)
+	log.Info(fmt.Sprintf("Safe JSON:\n%s", json))
 
 }
 
