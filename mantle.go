@@ -36,6 +36,7 @@ type Config struct {
 }
 
 var EncodeJson interface{}
+var Eyaml map[string]interface{}
 
 func checkError(err error) {
 	if err != nil {
@@ -105,27 +106,39 @@ func encodeToYaml(encodeThis string, c Config) {
 	userEymlFile := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User)
 	if _, err := os.Stat(userEymlFile); os.IsNotExist(err) {
 		log.Warn(fmt.Sprintf("%s does not exist, creating.", userEymlFile))
-		os.Create(userEymlFile)
+		err := ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\nuser: %s", c.User)), 0644)
 		checkError(err)
 	}
 	efile, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User))
 	checkError(err)
 	log.Debug("eYaml File: ", fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User))
-	log.Debug(efile)
+	log.Debug("File:\n", string(efile))
+	// Unmarshal the yaml to something we can use later
+	err = yaml.Unmarshal(efile, &Eyaml)
+	checkError(err)
+	log.Debug("Marshelled YAML:\n", Eyaml)
 
-	for k, v := range envVars.(map[string]interface{}) {
-		log.Debug(fmt.Sprintf("%s: %s", k, v))
+	for jsonkey, jsonvalue := range envVars.(map[string]interface{}) {
+		log.Debug(fmt.Sprintf("%s: %s", jsonkey, jsonvalue))
 		match, err := regexp.Compile("^ENC\\[*")
 		checkError(err)
-		if match.MatchString(v.(string)) {
-			log.Debug("Matched ENC: ", v)
+		if match.MatchString(jsonvalue.(string)) {
+			log.Debug("Matched ENC: ", jsonvalue)
 			// Write the k,v to the users encrypted_$user.yaml file
 			// Open eyaml file for user
 			// Get users' private key and decode
 			pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
 			checkError(err)
 			log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-			log.Debug(pemData)
+			log.Debug(string(pemData))
+			for k, v := range Eyaml {
+				if k == jsonvalue {
+					log.Debug("Found match in YAML.", k, " ", v)
+
+				} else {
+					log.Debug("No matches found")
+				}
+			}
 
 		}
 
