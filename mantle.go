@@ -68,12 +68,12 @@ func setConfig(cp string) (o Config, err error) {
 	}
 	if _, err := os.Stat(o.EyamlDirectory); err != nil {
 		log.Warn(o.EyamlDirectory, " does not exist. Creating with mode 0644.")
-		err := os.Mkdir(o.EyamlDirectory, 0644)
+		err := os.Mkdir(o.EyamlDirectory, 0755)
 		checkError(err)
 	}
 	if _, err := os.Stat(o.SafeDir); err != nil {
 		log.Warn(o.SafeDir, " does not exist. Creating with mode 0644.")
-		err := os.Mkdir(o.SafeDir, 0644)
+		err := os.Mkdir(o.SafeDir, 0755)
 		checkError(err)
 	}
 	return o, nil
@@ -147,7 +147,10 @@ func encodeToYaml(encodeThis string, c Config) {
 
 	// Get users' private key and decode
 	pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-	checkError(err)
+	if err != nil {
+		log.Error(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User), " was not found. Try '-generate' first.")
+		checkError(err)
+	}
 	log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
 	log.Debug(string(pemData))
 
@@ -178,7 +181,7 @@ func encodeToYaml(encodeThis string, c Config) {
 			}
 			encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(encodevalue), []byte("userEymlFile"))
 			checkError(err)
-			log.Warn("Not showing string value as contents are binary bytes can screw up terminal output.")
+			log.Debug("Not showing string value as contents are binary bytes can screw up terminal output.")
 			log.Debug("Encoded value: ", encodedvalue)
 			// Add the encoded value to eyaml
 			Eyaml[encodekey] = string(encodedvalue)
