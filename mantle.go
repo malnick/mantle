@@ -242,7 +242,20 @@ func deployToMarathon(json2deploy string, c Config) {
 	var out bytes.Buffer
 	err = json.Indent(&out, []byte(jsonout), "", "\t")
 	checkError(err)
-	log.Info(fmt.Sprintf("Safe JSON:\n%s", string(out.Bytes())))
+	log.Info(fmt.Sprintf("POST to Marathon(s):\n%s", string(out.Bytes())))
+	postToMarathon(jsonout, c)
+}
+
+func postToMarathon(post []byte, c Config) {
+	marathons := c.Marathons
+	if len(marathons) < 1 {
+		log.Error("No marathons found in config.yaml. Exiting.")
+		os.Exit(1)
+	}
+	for _, uri := range marathons {
+		log.Info("POSTing to ", uri)
+
+	}
 
 }
 
