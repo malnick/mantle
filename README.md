@@ -51,4 +51,3 @@ Accepts ```/path/to/json.json```. Reads JSON data and looks for ENV parameters f
 
 It's good practice to keep your .mantle/eyaml directory as a git repo for easy access by other users. In example, many developers be given their own encode keys. The eyaml repo could be updated as neccessary, and when ready to deploy containers, a master user with the private keys for each dev could do so.  
 
-

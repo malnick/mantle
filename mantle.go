@@ -211,12 +211,34 @@ func encodeToYaml(encodeThis string, c Config) {
 }
 
 func deployToMarathon(json2deploy string, c Config) {
+	// Some objects to dump data into
 	var jsondata map[string]interface{}
+	var eyamldata map[string]interface{}
+	// Open the json and read it into our object
 	jsonfile, err := ioutil.ReadFile(json2deploy)
 	checkError(err)
 	err = json.Unmarshal(jsonfile, &jsondata)
 	checkError(err)
-	log.Debug(fmt.Sprintf("JSON Data:\n%s", jsondata))
+	log.Debug(fmt.Sprintf("JSON Data:\n%s", jsonfile))
+	// Get some env data
+	env := jsondata["env"]
+	log.Debug("Env: ", env)
+	// Open users' eyaml data and read it into the object
+	usereyaml := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User)
+	log.Debug("Reading in eyaml: ", usereyaml)
+	eyamlfile, err := ioutil.ReadFile(usereyaml)
+	checkError(err)
+	err = yaml.Unmarshal(eyamlfile, &eyamldata)
+	checkError(err)
+	log.Debug("eyaml:\n", string(eyamlfile))
+	for jsondeckey, jsondecvalue := range env.(map[string]interface{}) {
+		log.Debug("Testing for DEC: ", jsondecvalue, " ", jsondeckey)
+		match, err := regexp.Compile("^DEC\\[*")
+		checkError(err)
+		if match.MatchString(jsondecvalue.(string)) {
+			log.Debug("Matched: ", jsondecvalue)
+		}
+	}
 }
 
 func main() {
