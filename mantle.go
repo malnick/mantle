@@ -25,14 +25,13 @@ import (
 var home = os.Getenv("HOME")
 
 // CLI Falgs
-var configPath = flag.String("c", "./config.yaml", "Path to config.yaml.")
+var configPath = flag.String("config", strings.Join([]string{home, "/.mantle/config.yaml"}, ""), "The path to the configuration file.")
 var verbose = flag.Bool("v", false, "Log verbosity.")
 var encode = flag.String("encode", "", "Encrypt JSON. Accepts /path/to/json.json.")
 var decode = flag.String("decode", "", "Decode JSON. Accepts /path/to/json.json.")
 var deploy = flag.String("deploy", "", "Deploy JSON to Marathon. Accepts /path/to/json.json.")
 var gen = flag.Bool("generate", false, "Generate PKCS keys. Deposits keys in ~/.mantle/keys.")
 var user = flag.String("u", "", "Override user in config.yaml.")
-var configpath = flag.String("c", strings.Join([]string{home, "/.mantle/config.yaml"}, ""), "The path to the configuration file.")
 
 // Config from YAML
 type Config struct {
