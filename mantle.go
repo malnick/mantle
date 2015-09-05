@@ -110,14 +110,6 @@ func generateKeys(c Config) {
 	fmt.Println(string(pubBytes))
 }
 
-func decodeJson(decodeThis string, c Config) {
-	files, err := ioutil.ReadDir(c.EyamlDirectory)
-	checkError(err)
-	for _, file := range files {
-		log.Debug("eYaml found: ", file)
-	}
-}
-
 func encodeToYaml(encodeThis string, c Config) {
 	// For reading in and out json and yaml data
 	var EncodeJson interface{}
@@ -189,7 +181,7 @@ func encodeToYaml(encodeThis string, c Config) {
 	log.Info("Saving safe JSON for decode: ", fmt.Sprintf("%s/%s", c.SafeDir, safejsonname))
 }
 
-func decodejson(json2deploy string, c Config) []byte {
+func decodeJson(json2deploy string, c Config) []byte {
 	// Some objects to dump data into
 	var jsondata map[string]interface{}
 	var eyamldata map[string]interface{}
@@ -368,7 +360,7 @@ func main() {
 	}
 	if len(*decode) > 0 {
 		log.Info("Decoding ", *decode)
-		decodejson(*decode, config)
+		decodeJson(*decode, config)
 	}
 	if len(*encode) > 0 {
 		log.Info("Encoding ", *encode)
@@ -376,6 +368,6 @@ func main() {
 	}
 	if len(*deploy) > 0 {
 		log.Info("Deploying ", *deploy)
-		postToMarathon(decodejson(*deploy, config), config)
+		postToMarathon(decodeJson(*deploy, config), config)
 	}
 }
