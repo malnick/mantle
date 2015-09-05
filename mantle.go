@@ -149,13 +149,7 @@ func encodeToYaml(encodeThis string, c Config) {
 	checkError(err)
 
 	// Get users' private key and decode
-	pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-	if err != nil {
-		log.Error(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User), " was not found. Try '-generate' first.")
-		checkError(err)
-	}
-	log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-	log.Debug(string(pemData))
+	//pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
 
 	for jsonkey, jsonvalue := range envVars.(map[string]interface{}) {
 		log.Debug(fmt.Sprintf("%s: %s", jsonkey, jsonvalue))
@@ -163,6 +157,7 @@ func encodeToYaml(encodeThis string, c Config) {
 		checkError(err)
 		if match.MatchString(jsonvalue.(string)) {
 			// Split the json match and encode the value
+			log.Debug("Encrypting value: ", jsonvalue.(string))
 			encodevalue := strings.Split(strings.Split(jsonvalue.(string), ":")[1], "]")[0]
 			encodekey := strings.Split(strings.Split(jsonvalue.(string), ":")[0], "[")[1]
 			encodedvalue, err := crypto("encrypt", c, encodevalue)
@@ -264,46 +259,78 @@ func postToMarathon(post []byte, c Config) {
 		resp, err := client.Do(req)
 		checkError(err)
 		defer resp.Body.Close()
-		log.Info("Response Status:", resp.Status)
-		log.Info("response Headers:", resp.Header)
+		log.Debug("Response Status:", resp.Status)
+		log.Debug("response Headers:", resp.Header)
 		body, _ := ioutil.ReadAll(resp.Body)
 		log.Info("Response Body:", string(body))
 	}
-
 }
 
 func crypto(mode string, c Config, data string) ([]byte, error) {
-	pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-	checkError(err)
-	// Extract the PEM-encoded data block
-	block, _ := pem.Decode(pemData)
-	if block == nil {
-		log.Error("bad key data: %s", "not PEM-encoded")
-		os.Exit(1)
-	}
-	if got, want := block.Type, "RSA PRIVATE KEY"; got != want {
-		log.Error("unknown key type %q, want %q", got, want)
-		os.Exit(1)
-	}
-	// Decode the RSA private key
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		log.Error("bad private key: %s", err)
-		os.Exit(1)
-	}
-
+	log.Debug("RSA to block cipher conversion started.")
+	// Decrypt or encrypt
 	if mode == "decrypt" {
 		log.Debug("Decrypting...")
+		// Open private key data or fail gracefully
+		privPath := fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User)
+		pemData, err := ioutil.ReadFile(privPath)
+		if err != nil {
+			log.Error(privPath, " was not found. Try '-generate' first.")
+			checkError(err)
+		}
+		log.Debug("Private key file: ", privPath)
+		log.Debug(string(pemData))
+		checkError(err)
+		// Extract the PEM-encoded data block
+		block, _ := pem.Decode(pemData)
+		if block == nil {
+			log.Error("bad key data: %s", "not PEM-encoded")
+			os.Exit(1)
+		}
+		if got, want := block.Type, "RSA PRIVATE KEY"; got != want {
+			log.Error("unknown key type %q, want %q", got, want)
+			os.Exit(1)
+		}
+		// Decode the RSA private key
+		priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			log.Error("bad private key: %s", err)
+			os.Exit(1)
+		}
 		decryptedvalue, err := rsa.DecryptOAEP(sha1.New(), rand.Reader, priv, []byte(data), []byte(">"))
 		checkError(err)
 		return decryptedvalue, nil
 
 	} else if mode == "encrypt" {
-		encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(data), []byte(string(">")))
+		log.Debug("Encrypting...")
+		// Open public key data or fail gracefully
+		pubPath := fmt.Sprintf("%s/publickey_%s.pem", c.KeyDirectory, c.User)
+		pubData, err := ioutil.ReadFile(pubPath)
+		if err != nil {
+			log.Error(pubPath, " was not found. Try '-generate' first.")
+			checkError(err)
+		}
+		log.Debug("Private key file: ", pubPath)
+		log.Debug(string(pubData))
+		// Create block cipher from RSA key
+		block, _ := pem.Decode(pubData)
+		if block == nil {
+			log.Error("Bad key data: %s", "not PEM encoded")
+			os.Exit(1)
+		}
+		if got, want := block.Type, "RSA PUBLIC KEY"; got != want {
+			log.Error("Unknown key type %q, want %q", got, want)
+			os.Exit(1)
+		}
+		pubkey, err := x509.ParsePKIXPublicKey(block.Bytes)
+		checkError(err)
+		//pubkey = *pubkey.(*rsa.PublicKey)
+		encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pubkey.(*rsa.PublicKey), []byte(data), []byte(string(">")))
 		checkError(err)
 		log.Debug("Not showing string value as contents are binary bytes can screw up terminal output.")
 		log.Debug("Encoded value: ", encodedvalue)
 		return encodedvalue, nil
+
 	} else {
 		log.Error("Not a known mode: ", mode)
 		os.Exit(1)
