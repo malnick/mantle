@@ -210,7 +210,7 @@ func decodeJson(json2deploy string, c Config) []byte {
 		match, err := regexp.Compile("^DEC\\[*")
 		checkError(err)
 		if match.MatchString(jsondecvalue.(string)) {
-			log.Debug("Matched: ", jsondecvalue)
+			log.Debug("Matched DEC: ", jsondecvalue)
 			jsondecvalue := strings.Split(strings.Split(jsondecvalue.(string), "[")[1], "]")[0]
 			// Get value from yaml
 			for eyamlkey, eyamlvalue := range eyamldata {
@@ -223,6 +223,10 @@ func decodeJson(json2deploy string, c Config) []byte {
 					log.Info("Decrypted ", eyamlkey, " to ", string(decrypted))
 					unsafejson["env"].(map[string]interface{})[jsondeckey] = string(decrypted)
 				}
+			}
+			if match.MatchString(unsafejson["env"].(map[string]interface{})[jsondeckey].(string)) {
+				log.Warn(jsondecvalue, " was not found in ", usereyaml, ".")
+				log.Warn("Please make sure you're decrypting with the correct user.")
 			}
 		}
 	}
