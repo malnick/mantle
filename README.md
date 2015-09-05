@@ -44,10 +44,30 @@ Generates 1024 bit RSA public & private keys and places them in ```key_directory
 Override the default user in the config.yaml. This enables you to deploy, encode or decode with another users' keys. The key must be present in the key_directory with value of ```$ke_directory/privatekey_$user.pem``` and ```$key_directory/publickey_$user.pem```.
 
 #### -deploy | deploy to Marathon
-Accepts ```/path/to/json.json```. Reads JSON data and looks for ENV parameters for Docker container that has values of ```DEC[some_value]```. For each DEC[] statement, it searchs the $users' encrypted YAML file (```$eyaml_dir/$user.yaml```) for the encrypted value and replaces it with teh decrypted value. It then POSTs the decrypted value to Marathon(s) in config.yaml.
+Accepts ```/path/to/json.json```. 
+
+Reads JSON data and looks for ENV parameters for Docker container that has values of ```DEC[some_value]```. 
+
+For each DEC[] statement, it searchs the $users' encrypted YAML file (```$eyaml_dir/$user.yaml```) for the encrypted value and replaces it with teh decrypted value. It then POSTs the decrypted value to Marathon(s) in config.yaml.
 
 #### -encode | encode JSON
-Accepts ```/path/to/json.json```. Reads JSON data and looks for ENV parameters for Docker container that has values of ```ENC[$key:$value]```. These are assumed to be the cleartext $value of the $key. The $value is encrypted with the users' public key, and updated in ```$eyaml_dir/$user.yaml``` for use by either -deploy or -decode later. If ```/$eyaml_dir/$user.yaml``` does not exist in $eyaml_dir, then that file is created. 
+Accepts ```/path/to/json.json```. 
+
+Reads JSON data and looks for ENV parameters for Docker container that has values of ```ENC[$key:$value]```. 
+
+These are assumed to be the cleartext $value of the $key. The $value is encrypted with the users' public key, and updated in ```$eyaml_dir/$user.yaml``` for use by either -deploy or -decode later. If ```/$eyaml_dir/$user.yaml``` does not exist in $eyaml_dir, then that file is created. 
 
 It's good practice to keep your .mantle/eyaml directory as a git repo for easy access by other users. In example, many developers be given their own encode keys. The eyaml repo could be updated as neccessary, and when ready to deploy containers, a master user with the private keys for each dev could do so.  
 
+#### -decode | decode JSON 
+Accepts ```/path/to/json.json```.
+
+Reads JSON data and looks for ENV parameters for Docker container that has values of ```DEC[$eyaml_key]```.
+
+This eyaml data is usually created via the ```-encode``` directive. 
+
+# Common Patterns
+Create private/public keys and eyaml data from cleartext in JSON for Marathon:
+
+1. ```mantle -generate```: Generates keys for $user defined in config.yaml. User can be overridden with -u. Keys are stored in $key_directory specified in config.yaml.
+1. 
