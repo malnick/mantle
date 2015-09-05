@@ -149,13 +149,7 @@ func encodeToYaml(encodeThis string, c Config) {
 	checkError(err)
 
 	// Get users' private key and decode
-	pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-	if err != nil {
-		log.Error(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User), " was not found. Try '-generate' first.")
-		checkError(err)
-	}
-	log.Debug("Private key file: ", fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
-	log.Debug(string(pemData))
+	//pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
 
 	for jsonkey, jsonvalue := range envVars.(map[string]interface{}) {
 		log.Debug(fmt.Sprintf("%s: %s", jsonkey, jsonvalue))
@@ -277,7 +271,15 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 	// Decrypt or encrypt
 	if mode == "decrypt" {
 		log.Debug("Decrypting...")
-		pemData, err := ioutil.ReadFile(fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User))
+		// Open private key data or fail gracefully
+		privPath := fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User)
+		pemData, err := ioutil.ReadFile(privPath)
+		if err != nil {
+			log.Error(privPath, " was not found. Try '-generate' first.")
+			checkError(err)
+		}
+		log.Debug("Private key file: ", privPath)
+		log.Debug(string(pemData))
 		checkError(err)
 		// Extract the PEM-encoded data block
 		block, _ := pem.Decode(pemData)
@@ -301,7 +303,16 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 
 	} else if mode == "encrypt" {
 		log.Debug("Encrypting...")
-		pubData, err := ioutil.ReadFile(fmt.Sprintf("%s/publickey_%s.pem", c.KeyDirectory, c.User))
+		// Open public key data or fail gracefully
+		pubPath := fmt.Sprintf("%s/publickey_%s.pem", c.KeyDirectory, c.User)
+		pubData, err := ioutil.ReadFile(pubPath)
+		if err != nil {
+			log.Error(pubPath, " was not found. Try '-generate' first.")
+			checkError(err)
+		}
+		log.Debug("Private key file: ", pubPath)
+		log.Debug(string(pubData))
+		// Create block cipher from RSA key
 		block, _ := pem.Decode(pubData)
 		if block == nil {
 			log.Error("Bad key data: %s", "not PEM encoded")
