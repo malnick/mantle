@@ -70,7 +70,8 @@ This eyaml data is usually created via the ```-encode``` directive.
 Create private/public keys and eyaml data from cleartext in JSON for Marathon:
 
 1. ```mantle -generate```: Generates keys for $user defined in config.yaml. User can be overridden with -u. Keys are stored in $key_directory specified in config.yaml.
-1. ```vi cleartex_marathon_data.json```:
+
+2. ```vi marathon_data.json```:
 
 ```json
 {
@@ -100,3 +101,76 @@ Create private/public keys and eyaml data from cleartext in JSON for Marathon:
   }
 } 
 ```
+
+Add as many ```ENC[eyaml_key:cleartext_value]``` as you need. 
+
+3. ```mantle -encode marathon_data.json```: Encodes the cleartext values in each ENC[] statement with the user's public key. 
+
+Adds those key/values to the eyaml file, and saves the eyaml file to ```$eyaml_directory/$user.yaml``` as:
+
+```yaml
+---
+my_license_key: !!binary |
+  iFpLHn3wsr6/ZpoolepdT7uhp6hRq/2Tr+LyJXOpJAxkulMsb1pxE8GjKlR9iTTIV9IYnU
+  JeIibAaDqfq0SZF8i8xjN6Tx6Ytx3d8BBu2pCT3nDuqpGEDqnZUZDkjp6eRScAtbsPzB8m
+  taVfEO9j7zEpU/pWTr9x/awsK8gGp/E=
+prod_caleb_secret: !!binary |
+  IGpl8fRKGol+XHnCIsha0fTVIsTiq1sdbZ/l0PplAzBdPN+vmjn5Cg7fBeHKoT+7+RCyId
+  Yu+7O/gUK1R5zGHJgXA9BV9I3Fh+/dCb3W+c3NFFQNfivHxoad8ggZIX1xk/EyJQAJHTRD
+  WypeeyIswps1o5cv1DXj2rJbjBJ33hA=
+production_secret: !!binary |
+  Sc2D2DlrXf+rsZ6Yovr2/0AE5ZhwfRgKuHax3c3zxDIRvpCcfjqGvbXQUOpE/NwUAu/hNt
+  km1vHJ3CgQIwr1Y8SD3WVQ1O2KO87bhcQHmB4HTFsLCtW6m0KsqI5okCSUnsR+yAhKYfqt
+  2MBjh38IN3JQz3PbA2psfhrzAg8rt7M=
+qa_mongo_pw: !!binary |
+  sOOZCr1RsNQT56UZJVxqi39oSC6r5qazGsRncnHP4rdRIAELwW1qME+bBMqhlUh4enqYkM
+  vIk6ebR5Oxt+luxAJR5yCfP4Ol7OZjCHIwOCnW5l50ekOuBnJWxhUEQMZe+4DMsK9G+ml0
+  /W1mX71ogSK7Kxcn32Ttb2vK9jDfY/k=
+user: some_user 
+``` 
+
+A new "safe" JSON is saved to ```$safe_dir/marathon_data.json``` as:
+
+```yaml
+{
+        "container": {
+                "docker": {
+                        "image": "some_repo/some_container_image",
+                        "network": "BRIDGE",
+                        "portMappings": [
+                                {
+                                        "containerPort": 5050,
+                                        "hostPort": 0,
+                                        "protocol": "tcp"
+                                }
+                        ]
+                },
+                "type": "DOCKER"
+        },
+        "cpus": 0.5,
+        "env": {
+                "JEFFS_SECRET": "DEC[production_secret]",
+                "MONGO_PASSWORD": "DEC[qa_mongo_pw]",
+                "MY_LICENSE_KEY": "DEC[my_license_key]",
+                "SAFE_DATA": "This is safe"
+        },
+        "id": "my-service",
+        "instances": 1,
+        "mem": 1024,
+        "upgradeStrategy": {
+                "maximumOverCapacity": 0.4,
+                "minimumHealthCapacity": 0.8
+        }
+}
+``` 
+
+4. ```mantle -deploy ~/.mantle/safe/marathon_data.json```: Deploys the "safe" JSON data, first decrypting the DEC[] statements, then POSTing that decrypted JSON to each specified Marathon in your config.yaml:
+
+## General Usage Guidelines
+We developed Mantle as a way for developers to generate their own configuration. An operations person (or persons) hands out each user a public key, (generated with ``` mantle -generate -u sally```). When Sally gets her key, she can use Mantle to encode all her secret values. 
+
+We keep Mantle eyaml_dir and safe_dir as Git repo's for our developers. When Sally need to deploy a new machine with secret data she can encode the JSON with her public key using ```Mantle -encode clear.json```. Sally then commits and pushes the updated eyaml_dir and safe_dir to git. 
+
+An operations person with the private key can then double check the configuration, and deploy with her private key for Sally.
+
+
