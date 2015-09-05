@@ -299,6 +299,18 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 		return decryptedvalue, nil
 
 	} else if mode == "encrypt" {
+		pubData, err := ioutil.ReadFile(fmt.Sprintf("%s/publickey_%s.pem", c.KeyDirectory, c.User))
+		block, _ := pem.Decode(pubData)
+		if block == nil {
+			log.Error("bad key data: %s", "not PEM-encoded")
+			os.Exit(1)
+		}
+		if got, want := block.Type, "RSA PUBLIC KEY"; got != want {
+			log.Error("unknown key type %q, want %q", got, want)
+			os.Exit(1)
+		}
+		pubkey, err := x509.ParsePKIXPublicKey(block.Bytes)
+		priv.PublicKey = *pubkey.(*rsa.PublicKey)
 		encodedvalue, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, &priv.PublicKey, []byte(data), []byte(string(">")))
 		checkError(err)
 		log.Debug("Not showing string value as contents are binary bytes can screw up terminal output.")
