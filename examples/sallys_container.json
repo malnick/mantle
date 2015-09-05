@@ -1,0 +1,25 @@
+{
+  "container": {
+    "type": "DOCKER",
+    "docker": {
+      "image": "sallys_org/sallys_container",
+      "network": "BRIDGE",
+      "portMappings": [
+        { "containerPort": 5050, "hostPort": 0, "protocol": "tcp" }
+      ]
+    }
+  },
+  "id": "my-service",
+  "env": {
+    "SALLYS_SECRET": "ENC[sallys_qa_secret:superawesomesauce]",
+    "MONGO_PASSWORD":"ENC[qa_mongo_password:mongoiswebscale]",
+    "NEWRELIC_API_KEY":"ENC[newrelic_api_key:7638263546473822299283737]"
+  },
+  "instances": 1,
+  "cpus": 0.5,
+  "mem": 1024,
+  "upgradeStrategy": {
+    "minimumHealthCapacity": 0.8,
+    "maximumOverCapacity": 0.4
+  }
+}

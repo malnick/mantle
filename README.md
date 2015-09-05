@@ -1,3 +1,5 @@
+<img style="float: center;" src="https://dl.dropboxusercontent.com/u/77193293/mantle.png">
+
 # Mantle
 Mantle is an deployment method for Mesosphere's Marathon utility that enables multi-user encrypted JSON.
 

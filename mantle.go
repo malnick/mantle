@@ -339,6 +339,15 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 }
 
 func main() {
+	fmt.Println(`   *                   )            (            `)
+	fmt.Println(`  ( )        (       ( /(    *   )   )\ )        `)
+	fmt.Println(`  )\))(      )\     )\())   )  /(  (()/(   (    `)
+	fmt.Println(` ((_)()\  ((((_)(   ((_)\   ( )(_))  /(_))  )\   `)
+	fmt.Println(` (_()((_)  )\ _ )\   _((_) (_(_())  (_))   ((_)  `)
+	fmt.Println(` |  \/  |  (_)_\(_) | \| | |_   _|  | |    | __| `)
+	fmt.Println(` | |\/| |   / _ \   | .  |   | |    | |__  | _|  `)
+	fmt.Println(` |_|  |_|  /_/ \_\  |_|\_|   |_|    |____| |___| `)
+
 	flag.Parse()
 	// Set loglevel
 	if *verbose {
