@@ -70,4 +70,33 @@ This eyaml data is usually created via the ```-encode``` directive.
 Create private/public keys and eyaml data from cleartext in JSON for Marathon:
 
 1. ```mantle -generate```: Generates keys for $user defined in config.yaml. User can be overridden with -u. Keys are stored in $key_directory specified in config.yaml.
-1. 
+1. ```vi cleartex_marathon_data.json```:
+
+```json
+{
+  "container": {
+    "type": "DOCKER",
+    "docker": {
+      "image": "some_repo/some_container_image",
+      "network": "BRIDGE",
+      "portMappings": [
+        { "containerPort": 5050, "hostPort": 0, "protocol": "tcp" }
+      ]
+    }
+  },
+  "id": "my-service",
+  "env": {
+    "MY_LICENSE_KEY": "ENC[my_license_key:12345]",
+    "MONGO_PASSWORD": "ENC[qa_mongo_pw:$ecretp@$$word]",
+    "JEFFS_SECRET": "ENC[production_secret:13adfafd%^$^$&DFS]",
+    "SAFE_DATA": "This is safe"
+  },
+  "instances": 1,
+  "cpus": 0.5,
+  "mem": 1024,
+  "upgradeStrategy": {
+    "minimumHealthCapacity": 0.8,
+    "maximumOverCapacity": 0.4
+  }
+} 
+```
