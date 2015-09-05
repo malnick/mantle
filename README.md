@@ -5,6 +5,8 @@ Mantle enables operations teams to pass out public keys to developers to encode 
 
 NOTE: Public key usage isn't supported *just yet (TM), you need the private key locally to encode data since it's generated from the private key for now. 
 
+pub branch is now using public key in beta.
+
 ## Build & Install
 
 1. ```go build mantle.go```
