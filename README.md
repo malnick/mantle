@@ -1,15 +1,14 @@
 # Mantle
-Mantle is an intermediary deployment stage for Mesosphere's Marathon utility that enables multi-user encrypted JSON.
+Mantle is an deployment method for Mesosphere's Marathon utility that enables multi-user encrypted JSON.
 
 Mantle enables operations teams to pass out public keys to developers to encode their cleartext ENV variables that are common in JSON POSTs to Marathon. The operations team can then decode with the associated private key and deploy, all in a single utility. 
 
-## Available Commands
+## Build & Install
 
-```mantle -deploy $somejson.json```: Decrypts all `DEC[$string]` statements and POSTs to Marathon(s).
-
-```mantle -encode $somejson.json```: Encodes all `ENC[$key:$value]` statements and creates encrypted YAML file with the encoded k,v values for the user (defined in config.yaml)
-
-```mantle -decode $somejson.json```: Decodes all `DEC[$string]` statements and returns it to STDOUT for the user in config.yaml.
+1. ```go build mantle.go```
+1. ```sudo ln -s /usr/local/bin/mantle /path/to/binary/mantle```
+1. ```mkdir ~/.mantle```
+1. ```touch ~/.mantle/config.yaml``` 
 
 ## Configuration
 All configuration is done via `~/.mantle/config.yaml`:
