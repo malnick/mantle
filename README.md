@@ -3,6 +3,8 @@ Mantle is an deployment method for Mesosphere's Marathon utility that enables mu
 
 Mantle enables operations teams to pass out public keys to developers to encode their cleartext ENV variables that are common in JSON POSTs to Marathon. The operations team can then decode with the associated private key and deploy, all in a single utility. 
 
+NOTE: Public key usage isn't supported *just yet (TM), you need the private key locally to encode data since it's generated from the private key for now. 
+
 ## Build & Install
 
 1. ```go build mantle.go```
@@ -28,8 +30,6 @@ eyaml_dir: /Users/your_name/.mantle/eyaml
 # Directory to store safe JSON 
 safe_dir: /Users/your_name/.mantle/safe
 ```
-
-Mantle will create the directories for you if they do not exist. However, it's recommended to use Git or another SCM utility for your eyaml and safe directories to enable streamlined sharing of new, encoded data.
 
 ## Options
 

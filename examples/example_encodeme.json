@@ -14,7 +14,8 @@
     "MY_LICENSE_KEY": "ENC[my_license_key:12345]",
     "MONGO_PASSWORD": "ENC[qa_mongo_pw:$ecretp@$$word]",
     "JEFFS_SECRET": "ENC[production_secret:13adfafd%^$^$&DFS]",
-    "SAFE_DATA": "This is safe"
+    "SAFE_DATA": "This is safe",
+    "PAULS_SECRET": "ENC[pauls_qa_key:paulsgiantsecret]"
   },
   "instances": 1,
   "cpus": 0.5,
