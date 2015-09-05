@@ -163,7 +163,42 @@ A new "safe" JSON is saved to ```$safe_dir/marathon_data.json``` as:
 }
 ``` 
 
-4. ```mantle -deploy ~/.mantle/safe/marathon_data.json```: Deploys the "safe" JSON data, first decrypting the DEC[] statements, then POSTing that decrypted JSON to each specified Marathon in your config.yaml:
+4. ```mantle -deploy ~/.mantle/safe/marathon_data.json```: Deploys the "safe" JSON data, first decrypting the DEC[] statements, then POSTing that decrypted JSON to each specified Marathon in your config.yaml. 
+
+The final POST from our example, with decrypted data:
+
+```json
+{
+        "container": {
+                "docker": {
+                        "image": "some_repo/some_container_image",
+                        "network": "BRIDGE",
+                        "portMappings": [
+                                {
+                                        "containerPort": 5050,
+                                        "hostPort": 0,
+                                        "protocol": "tcp"
+                                }
+                        ]
+                },
+                "type": "DOCKER"
+        },
+        "cpus": 0.5,
+        "env": {
+                "JEFFS_SECRET": "13adfafd%^$^$\u0026DFS",
+                "MONGO_PASSWORD": "$ecretp@$$word",
+                "MY_LICENSE_KEY": "12345",
+                "SAFE_DATA": "This is safe"
+        },
+        "id": "my-service",
+        "instances": 1,
+        "mem": 1024,
+        "upgradeStrategy": {
+                "maximumOverCapacity": 0.4,
+                "minimumHealthCapacity": 0.8
+        }
+}
+```
 
 ## General Usage Guidelines
 We developed Mantle as a way for developers to generate their own configuration. An operations person (or persons) hands out each user a public key, (generated with ``` mantle -generate -u sally```). When Sally gets her key, she can use Mantle to encode all her secret values. 
