@@ -192,7 +192,7 @@ func encodeToYaml(encodeThis string, c Config) {
 	log.Info("Saving safe JSON for decode: ", fmt.Sprintf("%s/%s", c.SafeDir, safejsonname))
 }
 
-func deployToMarathon(json2deploy string, c Config) {
+func decodejson(json2deploy string, c Config) []byte {
 	// Some objects to dump data into
 	var jsondata map[string]interface{}
 	var eyamldata map[string]interface{}
@@ -243,8 +243,9 @@ func deployToMarathon(json2deploy string, c Config) {
 	var out bytes.Buffer
 	err = json.Indent(&out, []byte(jsonout), "", "\t")
 	checkError(err)
-	log.Info(fmt.Sprintf("POST to Marathon(s):\n%s", string(out.Bytes())))
-	postToMarathon(jsonout, c)
+	log.Info(fmt.Sprintf("Decoded JSON:\n%s", string(out.Bytes())))
+	return jsonout
+	//postToMarathon(jsonout, c)
 }
 
 func postToMarathon(post []byte, c Config) {
@@ -328,8 +329,8 @@ func main() {
 		os.Exit(0)
 	}
 	if len(*decode) > 0 {
-		log.Info(*decode)
-		os.Exit(0)
+		log.Info("Decoding ", *decode)
+		decodejson(*decode, config)
 	}
 	if len(*encode) > 0 {
 		log.Info("Encoding ", *encode)
@@ -337,6 +338,6 @@ func main() {
 	}
 	if len(*deploy) > 0 {
 		log.Info("Deploying ", *deploy)
-		deployToMarathon(*deploy, config)
+		postToMarathon(decodejson(*deploy, config), config)
 	}
 }
