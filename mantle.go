@@ -52,8 +52,17 @@ func checkError(err error) {
 func setConfig(cp string) (o Config, err error) {
 	cf, err := ioutil.ReadFile(cp)
 	if err != nil {
-		log.Error("Are you sure file exists? ", cp)
-		panic(err)
+		log.Warn("config.yaml not found: ", cp)
+		log.Warn("Generating base config: ", cp)
+		writeme, err := yaml.Marshal(&o)
+		checkError(err)
+		err = ioutil.WriteFile(cp, []byte(fmt.Sprintf("---\n%s", writeme)), 0644)
+		if err != nil {
+			log.Error("Issue writing base config file: ", cp)
+			checkError(err)
+		}
+		log.Warn("Please update new base config file before running Mantle.")
+		os.Exit(1)
 	}
 	err = yaml.Unmarshal(cf, &o)
 	if err != nil {
@@ -65,17 +74,17 @@ func setConfig(cp string) (o Config, err error) {
 	}
 	// Check that directories exist, and if not create them.
 	if _, err := os.Stat(o.KeyDirectory); err != nil {
-		log.Warn(o.KeyDirectory, " does not exist. Creating with mode 0700.")
+		log.Warn(o.KeyDirectory, ": key directory specified in config.yaml does not exist. Creating with mode 0700.")
 		err := os.Mkdir(o.KeyDirectory, 0700)
 		checkError(err)
 	}
 	if _, err := os.Stat(o.EyamlDirectory); err != nil {
-		log.Warn(o.EyamlDirectory, " does not exist. Creating with mode 0644.")
+		log.Warn(o.EyamlDirectory, ": eyaml directory specified in config.yaml does not exist. Creating with mode 0644.")
 		err := os.Mkdir(o.EyamlDirectory, 0755)
 		checkError(err)
 	}
 	if _, err := os.Stat(o.SafeDir); err != nil {
-		log.Warn(o.SafeDir, " does not exist. Creating with mode 0644.")
+		log.Warn(o.SafeDir, ": safe directory specified in config.yaml does not exist. Creating with mode 0644.")
 		err := os.Mkdir(o.SafeDir, 0755)
 		checkError(err)
 	}
@@ -272,6 +281,9 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 		pemData, err := ioutil.ReadFile(privPath)
 		if err != nil {
 			log.Error(privPath, " was not found. Try '-generate' first.")
+			log.Error("Remember, keys are by-user. Ensure running this command with the key for the correct user.")
+			log.Error("Ex: mantle -decode|-deploy /path/to/json -u some_user")
+			log.Error("Or ensure the user specified in config.yaml has a key that exists.")
 			checkError(err)
 		}
 		log.Debug("Private key file: ", privPath)
