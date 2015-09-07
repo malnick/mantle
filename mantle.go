@@ -72,6 +72,8 @@ func setConfig(cp string) (o Config, err error) {
 		}
 		log.Warn("Please update new base config file before deploying with Mantle.")
 		log.Warn(fmt.Sprintf("Base configuration:\n%s", []byte(fmt.Sprintf("---\n%s", writeme))))
+		log.Warn("Once updated, please run Mantle again. Exiting.")
+		os.Exit(1)
 	}
 	err = yaml.Unmarshal(cf, &o)
 	if err != nil {
