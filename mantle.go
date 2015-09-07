@@ -20,9 +20,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
 )
 
-var home = os.Getenv("HOME")
+var un, _ = user.Current()
+var home = un.HomeDir
+var mantlehome = fmt.Sprintf("%s/.mantle", home)
 
 // CLI Falgs
 var configPath = flag.String("config", strings.Join([]string{home, "/.mantle/config.yaml"}, ""), "The path to the configuration file.")
@@ -31,7 +34,7 @@ var encode = flag.String("encode", "", "Encrypt JSON. Accepts /path/to/json.json
 var decode = flag.String("decode", "", "Decode JSON. Accepts /path/to/json.json.")
 var deploy = flag.String("deploy", "", "Deploy JSON to Marathon. Accepts /path/to/json.json.")
 var gen = flag.Bool("generate", false, "Generate PKCS keys. Deposits keys in ~/.mantle/keys.")
-var user = flag.String("u", "", "Override user in config.yaml.")
+var username = flag.String("u", un.Username, "Override user in config.yaml.")
 
 // Config from YAML
 type Config struct {
@@ -39,7 +42,7 @@ type Config struct {
 	KeyDirectory   string   `yaml:"key_directory"`
 	EyamlDirectory string   `yaml:"eyaml_dir"`
 	SafeDir        string   `yaml:"safe_dir"`
-	User           string   `yaml:"user"`
+	Username       string   `yaml:"username"`
 }
 
 func checkError(err error) {
@@ -54,23 +57,29 @@ func setConfig(cp string) (o Config, err error) {
 	if err != nil {
 		log.Warn("config.yaml not found: ", cp)
 		log.Warn("Generating base config: ", cp)
-		writeme, err := yaml.Marshal(&o)
+		var base Config
+		base.KeyDirectory = fmt.Sprintf("%s/keys", mantlehome)
+		base.EyamlDirectory = fmt.Sprintf("%s/eyaml", mantlehome)
+		base.SafeDir = fmt.Sprintf("%s/safe", mantlehome)
+		base.Marathons = []string{"http://my.marathon1.com", "http://my.marathon2.com"}
+		base.Username = *username
+		writeme, err := yaml.Marshal(&base)
 		checkError(err)
 		err = ioutil.WriteFile(cp, []byte(fmt.Sprintf("---\n%s", writeme)), 0644)
 		if err != nil {
 			log.Error("Issue writing base config file: ", cp)
 			checkError(err)
 		}
-		log.Warn("Please update new base config file before running Mantle.")
-		os.Exit(1)
+		log.Warn("Please update new base config file before deploying with Mantle.")
+		log.Warn(fmt.Sprintf("Base configuration:\n%s", []byte(fmt.Sprintf("---\n%s", writeme))))
 	}
 	err = yaml.Unmarshal(cf, &o)
 	if err != nil {
 		log.Error("Is the ", cp, " proper YAML format?")
 		panic(err)
 	}
-	if len(*user) > 0 {
-		o.User = *user
+	if len(*username) > 0 {
+		o.Username = *username
 	}
 	// Check that directories exist, and if not create them.
 	if _, err := os.Stat(o.KeyDirectory); err != nil {
@@ -93,9 +102,9 @@ func setConfig(cp string) (o Config, err error) {
 
 func generateKeys(c Config) {
 	keyPath := c.KeyDirectory
-	user := c.User
-	privPath := fmt.Sprintf("%s/privatekey_%s.pem", keyPath, user)
-	pubPath := fmt.Sprintf("%s/publickey_%s.pem", keyPath, user)
+	username := c.Username
+	privPath := fmt.Sprintf("%s/privatekey_%s.pem", keyPath, username)
+	pubPath := fmt.Sprintf("%s/publickey_%s.pem", keyPath, username)
 	// generate private key
 	privatekey, err := rsa.GenerateKey(rand.Reader, 1024)
 	checkError(err)
@@ -135,15 +144,15 @@ func encodeToYaml(encodeThis string, c Config) {
 	safejson := EncodeJson.(map[string]interface{})
 	log.Debug("ENV: ", envVars)
 	// Open users eyaml file and make one if it doesnt exist
-	userEymlFile := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User)
+	userEymlFile := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.Username)
 	if _, err := os.Stat(userEymlFile); os.IsNotExist(err) {
 		log.Warn(fmt.Sprintf("%s does not exist, creating.", userEymlFile))
-		err := ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\nuser: %s", c.User)), 0644)
+		err := ioutil.WriteFile(userEymlFile, []byte(fmt.Sprintf("---\nusername: %s", c.Username)), 0644)
 		checkError(err)
 	}
-	efile, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User))
+	efile, err := ioutil.ReadFile(fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.Username))
 	checkError(err)
-	log.Debug("eYaml File: ", fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User))
+	log.Debug("eYaml File: ", fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.Username))
 	log.Debug("File:\n", string(efile))
 	// Unmarshal the yaml to something we can use later
 	err = yaml.Unmarshal(efile, &Eyaml)
@@ -204,7 +213,7 @@ func decodeJson(json2deploy string, c Config) []byte {
 	env := jsondata["env"]
 	log.Debug("Env: ", env)
 	// Open users' eyaml data and read it into the object
-	usereyaml := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.User)
+	usereyaml := fmt.Sprintf("%s/%s.yaml", c.EyamlDirectory, c.Username)
 	log.Debug("Reading in eyaml: ", usereyaml)
 	eyamlfile, err := ioutil.ReadFile(usereyaml)
 	checkError(err)
@@ -277,7 +286,7 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 	if mode == "decrypt" {
 		log.Debug("Decrypting...")
 		// Open private key data or fail gracefully
-		privPath := fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.User)
+		privPath := fmt.Sprintf("%s/privatekey_%s.pem", c.KeyDirectory, c.Username)
 		pemData, err := ioutil.ReadFile(privPath)
 		if err != nil {
 			log.Error(privPath, " was not found. Try '-generate' first.")
@@ -312,7 +321,7 @@ func crypto(mode string, c Config, data string) ([]byte, error) {
 	} else if mode == "encrypt" {
 		log.Debug("Encrypting...")
 		// Open public key data or fail gracefully
-		pubPath := fmt.Sprintf("%s/publickey_%s.pem", c.KeyDirectory, c.User)
+		pubPath := fmt.Sprintf("%s/publickey_%s.pem", c.KeyDirectory, c.Username)
 		pubData, err := ioutil.ReadFile(pubPath)
 		if err != nil {
 			log.Error(pubPath, " was not found. Try '-generate' first.")
@@ -365,6 +374,7 @@ func main() {
 		log.SetLevel(log.InfoLevel)
 		log.Info("Loglevel: Info")
 	}
+	log.Debug("User data: ", un)
 	// Set config
 	config, _ := setConfig(*configPath)
 	log.Debug("Configuration: ", config)
